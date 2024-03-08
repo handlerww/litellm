@@ -471,6 +471,7 @@ provider_list: List = [
     "maritalk",
     "voyage",
     "cloudflare",
+    "dashscope",
     "xinference",
     "custom",  # custom apis
 ]
@@ -580,6 +581,7 @@ from .llms.cohere import CohereConfig
 from .llms.ai21 import AI21Config
 from .llms.together_ai import TogetherAIConfig
 from .llms.cloudflare import CloudflareConfig
+from .llms.dashscope import DashscopeConfig
 from .llms.palm import PalmConfig
 from .llms.gemini import GeminiConfig
 from .llms.nlp_cloud import NLPCloudConfig
