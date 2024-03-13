@@ -2678,6 +2678,16 @@ def embedding(
                 optional_params=optional_params,
                 model_response=EmbeddingResponse(),
             )
+        elif custom_llm_provider == "dashscope":
+            response = dashscope.embedding(
+                model=model,
+                input=input,
+                encoding=encoding,
+                api_key=api_key,
+                logging_obj=logging,
+                optional_params=optional_params,
+                model_response=EmbeddingResponse(),
+            )    
         elif custom_llm_provider == "ollama":
             ollama_input = None
             if isinstance(input, list) and len(input) > 1:

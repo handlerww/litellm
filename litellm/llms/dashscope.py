@@ -152,6 +152,7 @@ def completion(
         print_verbose(f"raw model_response: {response.text}")
         # RESPONSE OBJECT
         if response.status_code != 200:
+            print(f"data: {data} ,response: {response.text}")
             raise DashscopeError(
                 status_code=response.status_code, message=response.text
             )
@@ -183,6 +184,63 @@ def completion(
         return model_response
 
 
-def embedding():
-    # logic for parsing in - calling - parsing out model embedding calls
-    pass
+def embedding(
+    model: str,
+    input: list,
+    api_key: Optional[str] = None,
+    logging_obj=None,
+    model_response=None,
+    optional_params=None,
+    encoding=None,
+):
+    embeddings_url = 'https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding'
+
+    # Prepare request data
+    data = {
+        "model": model,
+        "input": 
+            {
+                "texts":input
+            },
+        "parameters": {
+    		"text_type": "query"
+        }
+    }
+    if optional_params:
+        data.update(optional_params)
+
+    # Logging before API call
+    if logging_obj:
+        logging_obj.pre_call(
+            input=input, api_key=api_key, additional_args={"complete_input_dict": data}
+        )
+
+    # Send POST request
+    headers = validate_environment(api_key)
+    response = requests.post(embeddings_url, headers=headers, json=data)
+    if not response.ok:
+        raise DashscopeError(message=response.text, status_code=response.status_code)
+    completion_response = response.json()
+
+    # Check for errors in response
+    if "error" in completion_response:
+        raise DashscopeError(
+            message=completion_response["error"],
+            status_code=completion_response.get("status_code", 500),
+        )
+    # Process response data
+    model_response["data"] = [
+        {
+            "embedding": completion_response["output"]["embeddings"][0]["embedding"],
+            "index": 0,
+            "object": "embedding",
+        }
+    ]
+
+    num_tokens = len(completion_response["output"]["embeddings"][0]["embedding"])
+    # Adding metadata to response
+    model_response.usage = Usage(prompt_tokens=num_tokens, total_tokens=num_tokens)
+    model_response["object"] = "list"
+    model_response["model"] = model
+
+    return model_response
