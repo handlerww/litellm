@@ -8224,6 +8224,28 @@ class CustomStreamWrapper:
         except:
             raise ValueError(f"Unable to parse response. Original response: {chunk}")
 
+    def handle_dashscope_chunk(self, chunk):  # fake streaming
+        lines = chunk.split('\n')
+        for line in lines:
+            if 'data' in line:
+                if line.startswith('data:'):
+                    data_json_str = line[5:]  # remove 'data:' from the start of the line
+                    data_json = json.loads(data_json_str)
+        try:
+            text = data_json["output"]["text"]
+            is_finished = False
+            finish_reason = "null"
+            if data_json["output"]["finish_reason"] == 'stop':
+                finish_reason='stop'
+                is_finished = True
+            return {
+                "text": text,
+                "is_finished": is_finished,
+                "finish_reason": finish_reason,
+            }
+        except:
+            raise ValueError(f"Unable to parse response. Original response: {chunk}")
+
     def handle_maritalk_chunk(self, chunk):  # fake streaming
         chunk = chunk.decode("utf-8")
         data_json = json.loads(chunk)
@@ -8708,6 +8730,15 @@ class CustomStreamWrapper:
                     model_response.choices[0].finish_reason = response_obj[
                         "finish_reason"
                     ]
+            elif (
+                self.custom_llm_provider and self.custom_llm_provider == "dashscope"
+            ):  # ai21 doesn't provide streaming
+                response_obj = self.handle_dashscope_chunk(chunk)
+                completion_obj["content"] = response_obj["text"]
+                if response_obj["is_finished"]:
+                    model_response.choices[0].finish_reason = response_obj[
+                        "finish_reason"
+                    ]
             elif self.custom_llm_provider and self.custom_llm_provider == "maritalk":
                 response_obj = self.handle_maritalk_chunk(chunk)
                 completion_obj["content"] = response_obj["text"]
@@ -9157,6 +9188,7 @@ class CustomStreamWrapper:
                 or self.custom_llm_provider == "huggingface"
                 or self.custom_llm_provider == "ollama"
                 or self.custom_llm_provider == "ollama_chat"
+                or self.custom_llm_provider == "dashscope"
                 or self.custom_llm_provider == "vertex_ai"
                 or self.custom_llm_provider == "sagemaker"
                 or self.custom_llm_provider == "gemini"
@@ -9316,7 +9348,7 @@ class TextCompletionStreamWrapper:
 
 def mock_completion_streaming_obj(model_response, mock_response, model):
     for i in range(0, len(mock_response), 3):
-        completion_obj = {"role": "assistant", "content": mock_response[i : i + 3]}
+        completion_obj = {"role": "assistant", "content": mock_response[i: i + 3]}
         model_response.choices[0].delta = completion_obj
         yield model_response
 

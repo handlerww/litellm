@@ -1834,23 +1834,6 @@ def completion(
                 api_key=api_key,
                 logging_obj=logging,
             )
-            if "stream" in optional_params and optional_params["stream"] == True:
-                # don't try to access stream object,
-                response = CustomStreamWrapper(
-                    response,
-                    model,
-                    custom_llm_provider="dashscope",
-                    logging_obj=logging,
-                )
-
-            if optional_params.get("stream", False) or acompletion == True:
-                ## LOGGING
-                logging.post_call(
-                    input=messages,
-                    api_key=api_key,
-                    original_response=response,
-                )
-            response = response
         elif (
             custom_llm_provider == "baseten"
             or litellm.api_base == "https://app.baseten.co"
@@ -2128,7 +2111,7 @@ def batch_completion(
         def chunks(lst, n):
             """Yield successive n-sized chunks from lst."""
             for i in range(0, len(lst), n):
-                yield lst[i : i + n]
+                yield lst[i: i + n]
 
         with ThreadPoolExecutor(max_workers=100) as executor:
             for sub_batch in chunks(batch_messages, 100):

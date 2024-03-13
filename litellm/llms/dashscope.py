@@ -132,13 +132,9 @@ def completion(
 
     # COMPLETION CALL
     if "stream" in optional_params and optional_params["stream"] == True:
-        response = requests.post(
-            api_base,
-            headers=headers,
-            data=json.dumps(data),
-            # stream=optional_params["stream"],
+        return dashscope_async_streaming(
+            url=api_base, data=data, headers=headers, logging_obj=logging_obj
         )
-        return response.iter_lines()
     else:
         response = requests.post(
             api_base, headers=headers, data=json.dumps(data))
@@ -244,3 +240,26 @@ def embedding(
     model_response["model"] = model
 
     return model_response
+
+async def dashscope_async_streaming(url, data, headers, logging_obj):
+    data['parameters']['incremental_output'] = True
+    try:
+        headers["Accept"] = "text/event-stream"
+        client = httpx.AsyncClient()
+        async with client.stream(
+            url=f"{url}", json=data, method="POST",headers=headers, timeout=litellm.request_timeout
+        ) as response:
+            if response.status_code != 200:
+                raise DashscopeError(
+                    status_code=response.status_code, message=await response.aread()
+                )
+            streamwrapper = litellm.CustomStreamWrapper(
+                completion_stream=response.aiter_text(),
+                model=data["model"],
+                custom_llm_provider="dashscope",
+                logging_obj=logging_obj,
+            )
+            async for transformed_chunk in streamwrapper:
+                yield transformed_chunk
+    except Exception as e:
+        raise e
